@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Домашний Инвентарь</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --warning: #f59e0b;
+            --warning-hover: #d97706;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+        }
+
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; line-height: 1.5; }
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 24px; }
+        h1 { margin: 0; font-size: 1.75rem; }
+
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 24px; }
+        .stat-card { background: var(--card); padding: 16px; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+        .stat-card span { color: var(--muted); font-size: 0.875rem; display: block; }
+        .stat-card strong { font-size: 1.5rem; color: var(--primary); }
+
+        .card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.04); margin-bottom: 24px; transition: border-color 0.2s; }
+        .card.editing-mode { border: 2px solid var(--warning); background-color: #fffbeb; }
+        
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: center; }
+        input, select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; outline: none; background: #fff; }
+        input:focus, select:focus { border-color: var(--primary); }
+
+        .photo-upload-wrap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .file-label { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 12px; background: #f1f5f9; border: 1px dashed #94a3b8; border-radius: 8px; cursor: pointer; font-size: 0.9rem; color: var(--text); width: 100%; text-align: center; transition: 0.2s; }
+        .file-label:hover { background: #e2e8f0; }
+        .preview-box { display: none; align-items: center; gap: 8px; margin-top: 6px; font-size: 0.85rem; color: var(--muted); }
+        .preview-box img { width: 42px; height: 42px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+
+        .form-actions { display: flex; gap: 8px; }
+        .form-actions button { flex: 1; }
+
+        button { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; font-weight: 500; transition: 0.2s; }
+        button:hover { background: var(--primary-hover); }
+        button.warning { background: var(--warning); color: #fff; }
+        button.warning:hover { background: var(--warning-hover); }
+        button.secondary { background: #e2e8f0; color: var(--text); }
+        button.secondary:hover { background: #cbd5e1; }
+        button.icon-btn { background: transparent; padding: 6px 9px; border-radius: 6px; }
+        button.edit-btn { color: var(--primary); }
+        button.edit-btn:hover { background: #dbeafe; }
+        button.danger { color: var(--danger); }
+        button.danger:hover { background: #fee2e2; }
+
+        .filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+        .filters input { flex: 2; min-width: 200px; }
+        .filters select { flex: 1; min-width: 150px; }
+
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        th { color: var(--muted); font-weight: 600; font-size: 0.875rem; }
+        tr:hover { background-color: #f1f5f9; }
+        tr.active-edit { background-color: #fef3c7; }
+        
+        .thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); cursor: zoom-in; display: block; transition: transform 0.15s; }
+        .thumb:hover { transform: scale(1.08); }
+        .no-photo { width: 48px; height: 48px; border-radius: 8px; background: #f1f5f9; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 1.1rem; }
+
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 0.8rem; background: #e0e7ff; color: #3730a3; font-weight: 500; }
+        .room-badge { background: #dcfce7; color: #166534; }
+        .empty-state { text-align: center; padding: 40px; color: var(--muted); }
+
+        /* Модальное окно для фото */
+        .modal { display: none; position: fixed; z-index: 1000; inset: 0; background: rgba(15, 23, 42, 0.85); align-items: center; justify-content: center; padding: 20px; }
+        .modal.open { display: flex; }
+        .modal-content { max-width: 90vw; max-height: 85vh; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
+        .modal-caption { color: #fff; text-align: center; margin-top: 12px; font-size: 1rem; }
+        .modal-close { position: absolute; top: 20px; right: 28px; color: #fff; font-size: 2rem; cursor: pointer; background: none; border: none; padding: 0; line-height: 1; }
+
+        @media (max-width: 720px) {
+            table, thead, tbody, th, td, tr { display: block; }
+            thead { display: none; }
+            tr { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; padding: 12px; }
+            td { border: none; padding: 6px 0; display: flex; justify-content: space-between; align-items: center; }
+            td::before { content: attr(data-label); font-weight: 600; color: var(--muted); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>📦 Домашний Инвентарь</h1>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="secondary" onclick="exportData()">⬇ Скачать базу</button>
+            <button class="secondary" onclick="document.getElementById('importFile').click()">⬆ Загрузить базу</button>
+            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
+        </div>
+    </header>
+
+    <!-- Сводка -->
+    <div class="stats">
+        <div class="stat-card">
+            <span>Всего позиций</span>
+            <strong id="totalPositions">0</strong>
+        </div>
+        <div class="stat-card">
+            <span>Общее количество вещей</span>
+            <strong id="totalItems">0</strong>
+        </div>
+        <div class="stat-card">
+            <span>Общая стоимость (BYN)</span>
+            <strong id="totalValue">0</strong>
+        </div>
+    </div>
+
+    <!-- Форма добавления / редактирования -->
+    <div class="card" id="formCard">
+        <h3 id="formTitle" style="margin-top: 0;">Добавить вещь</h3>
+        <form id="itemForm" class="form-grid">
+            <input type="text" id="name" placeholder="Название (напр. Шуруповёрт)" required>
+            <select id="room">
+                <option value="Гостиная">Гостиная</option>
+                <option value="Спальня">Спальня</option>
+                <option value="Кухня">Кухня</option>
+                <option value="Прихожая">Прихожая</option>
+                <option value="Балкон / Кладовка">Балкон / Кладовка</option>
+                <option value="Ванная">Ванная</option>
+            </select>
+            <select id="category">
+                <option value="Электроника">Электроника</option>
+                <option value="Мебель">Мебель</option>
+                <option value="Инструменты">Инструменты</option>
+                <option value="Одежда и обувь">Одежда и обувь</option>
+                <option value="Посуда и быт">Посуда и быт</option>
+                <option value="Документы">Документы</option>
+                <option value="Другое">Другое</option>
+            </select>
+            <input type="text" id="spot" placeholder="Точное место (напр. Верхняя полка)">
+            <input type="number" id="qty" placeholder="Кол-во" value="1" min="1" required>
+            <input type="number" id="price" placeholder="Цена за шт. (BYN)" min="0" step="0.01">
+            
+            <div class="photo-upload-wrap">
+                <label class="file-label" for="photoInput">📷 Выбрать фото</label>
+                <input type="file" id="photoInput" accept="image/*" style="display: none;" onchange="handlePhotoSelect(event)">
+                <div class="preview-box" id="previewBox">
+                    <img id="previewImg" src="" alt="Превью">
+                    <span id="previewText">Фото готово</span>
+                    <button type="button" class="icon-btn danger" onclick="clearPhoto()" title="Убрать фото">✖</button>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" id="submitBtn">Добавить</button>
+                <button type="button" class="secondary" id="cancelEditBtn" style="display: none;" onclick="cancelEdit()">Отмена</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Поиск и таблица -->
+    <div class="card">
+        <div class="filters">
+            <input type="text" id="searchInput" placeholder="🔍 Поиск по названию или месту хранения..." oninput="render()">
+            <select id="filterRoom" onchange="render()">
+                <option value="">Все комнаты</option>
+                <option value="Гостиная">Гостиная</option>
+                <option value="Спальня">Спальня</option>
+                <option value="Кухня">Кухня</option>
+                <option value="Прихожая">Прихожая</option>
+                <option value="Балкон / Кладовка">Балкон / Кладовка</option>
+                <option value="Ванная">Ванная</option>
+            </select>
+            <select id="filterCategory" onchange="render()">
+                <option value="">Все категории</option>
+                <option value="Электроника">Электроника</option>
+                <option value="Мебель">Мебель</option>
+                <option value="Инструменты">Инструменты</option>
+                <option value="Одежда и обувь">Одежда и обувь</option>
+                <option value="Посуда и быт">Посуда и быт</option>
+                <option value="Документы">Документы</option>
+                <option value="Другое">Другое</option>
+            </select>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Фото</th>
+                        <th>Название</th>
+                        <th>Комната</th>
+                        <th>Категория</th>
+                        <th>Место хранения</th>
+                        <th>Кол-во</th>
+                        <th>Сумма (BYN)</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryBody"></tbody>
+            </table>
+            <div id="emptyState" class="empty-state">Список пока пуст. Добавьте первую вещь выше!</div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно просмотра фото -->
+<div class="modal" id="photoModal" onclick="closeModal(event)">
+    <button class="modal-close" onclick="closeModal(event, true)">&times;</button>
+    <div>
+        <img class="modal-content" id="modalImg" src="" alt="">
+        <div class="modal-caption" id="modalCaption"></div>
+    </div>
+</div>
+
+<script>
+    let items = JSON.parse(localStorage.getItem('homeInventory')) || [];
+    let currentPhotoBase64 = null;
+    let editingId = null;
+
+    // Сжатие фото перед сохранением в localStorage
+    function handlePhotoSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const MAX_SIZE = 800;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height && width > MAX_SIZE) {
+                    height *= MAX_SIZE / width;
+                    width = MAX_SIZE;
+                } else if (height > MAX_SIZE) {
+                    width *= MAX_SIZE / height;
+                    height = MAX_SIZE;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.75);
+                showPhotoPreview(currentPhotoBase64, 'Фото готово');
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function showPhotoPreview(src, labelText) {
+        document.getElementById('previewImg').src = src;
+        document.getElementById('previewText').textContent = labelText;
+        document.getElementById('previewBox').style.display = 'flex';
+    }
+
+    function clearPhoto() {
+        currentPhotoBase64 = null;
+        document.getElementById('photoInput').value = '';
+        document.getElementById('previewBox').style.display = 'none';
+        document.getElementById('previewImg').src = '';
+    }
+
+    const form = document.getElementById('itemForm');
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const itemData = {
+            name: document.getElementById('name').value.trim(),
+            room: document.getElementById('room').value,
+            category: document.getElementById('category').value,
+            spot: document.getElementById('spot').value.trim() || '—',
+            qty: parseInt(document.getElementById('qty').value) || 1,
+            price: parseFloat(document.getElementById('price').value) || 0,
+            photo: currentPhotoBase64
+        };
+
+        if (editingId !== null) {
+            const index = items.findIndex(i => i.id === editingId);
+            if (index !== -1) {
+                items[index] = { ...items[index], ...itemData };
+            }
+            resetFormState();
+        } else {
+            items.unshift({
+                id: Date.now(),
+                ...itemData
+            });
+            form.reset();
+            document.getElementById('qty').value = 1;
+            clearPhoto();
+        }
+
+        saveAndRender();
+    });
+
+    function startEdit(id) {
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+
+        editingId = id;
+        document.getElementById('name').value = item.name;
+        document.getElementById('room').value = item.room;
+        document.getElementById('category').value = item.category;
+        document.getElementById('spot').value = item.spot === '—' ? '' : item.spot;
+        document.getElementById('qty').value = item.qty;
+        document.getElementById('price').value = item.price || '';
+
+        if (item.photo) {
+            currentPhotoBase64 = item.photo;
+            showPhotoPreview(item.photo, 'Текущее фото');
+        } else {
+            clearPhoto();
+        }
+
+        // Визуальное переключение формы в режим редактирования
+        document.getElementById('formCard').classList.add('editing-mode');
+        document.getElementById('formTitle').textContent = '✏️ Редактирование: ' + item.name;
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.textContent = 'Сохранить';
+        submitBtn.classList.add('warning');
+        document.getElementById('cancelEditBtn').style.display = 'inline-block';
+
+        document.getElementById('formCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        render();
+    }
+
+    function cancelEdit() {
+        resetFormState();
+        render();
+    }
+
+    function resetFormState() {
+        editingId = null;
+        form.reset();
+        document.getElementById('qty').value = 1;
+        clearPhoto();
+
+        document.getElementById('formCard').classList.remove('editing-mode');
+        document.getElementById('formTitle').textContent = 'Добавить вещь';
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.textContent = 'Добавить';
+        submitBtn.classList.remove('warning');
+        document.getElementById('cancelEditBtn').style.display = 'none';
+    }
+
+    function deleteItem(id) {
+        if (confirm('Удалить эту вещь из списка?')) {
+            if (editingId === id) {
+                resetFormState();
+            }
+            items = items.filter(item => item.id !== id);
+            saveAndRender();
+        }
+    }
+
+    function saveAndRender() {
+        try {
+            localStorage.setItem('homeInventory', JSON.stringify(items));
+        } catch (e) {
+            alert('Память браузера заполнена! Скачайте базу через кнопку "Скачать базу" и удалите лишние фото.');
+        }
+        render();
+    }
+
+    function openModal(photoSrc, captionText) {
+        document.getElementById('modalImg').src = photoSrc;
+        document.getElementById('modalCaption').textContent = captionText;
+        document.getElementById('photoModal').classList.add('open');
+    }
+
+    function closeModal(event, force = false) {
+        if (force || event.target.id === 'photoModal') {
+            document.getElementById('photoModal').classList.remove('open');
+        }
+    }
+
+    function render() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const roomFilter = document.getElementById('filterRoom').value;
+        const catFilter = document.getElementById('filterCategory').value;
+
+        const filtered = items.filter(item => {
+            const matchesSearch = item.name.toLowerCase().includes(search) || item.spot.toLowerCase().includes(search);
+            const matchesRoom = !roomFilter || item.room === roomFilter;
+            const matchesCat = !catFilter || item.category === catFilter;
+            return matchesSearch && matchesRoom && matchesCat;
+        });
+
+        const tbody = document.getElementById('inventoryBody');
+        const emptyState = document.getElementById('emptyState');
+        tbody.innerHTML = '';
+
+        if (filtered.length === 0) {
+            emptyState.style.display = 'block';
+        } else {
+            emptyState.style.display = 'none';
+            filtered.forEach(item => {
+                const total = (item.qty * item.price).toFixed(2);
+                const tr = document.createElement('tr');
+                if (item.id === editingId) {
+                    tr.classList.add('active-edit');
+                }
+                
+                const photoCell = item.photo 
+                    ? `<img src="${item.photo}" class="thumb" alt="Фото" onclick="openModal('${item.photo}', '${escapeHtml(item.name)}')">`
+                    : `<div class="no-photo" title="Нет фото">📷</div>`;
+
+                tr.innerHTML = `
+                    <td data-label="Фото">${photoCell}</td>
+                    <td data-label="Название"><strong>${escapeHtml(item.name)}</strong></td>
+                    <td data-label="Комната"><span class="badge room-badge">${escapeHtml(item.room)}</span></td>
+                    <td data-label="Категория"><span class="badge">${escapeHtml(item.category)}</span></td>
+                    <td data-label="Место">${escapeHtml(item.spot)}</td>
+                    <td data-label="Кол-во">${item.qty} шт.</td>
+                    <td data-label="Сумма">${total} BYN</td>
+                    <td data-label="Действия" style="text-align: right; white-space: nowrap;">
+                        <button class="icon-btn edit-btn" onclick="startEdit(${item.id})" title="Редактировать">✏️</button>
+                        <button class="icon-btn danger" onclick="deleteItem(${item.id})" title="Удалить">✖</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Обновление статистики
+        document.getElementById('totalPositions').textContent = items.length;
+        document.getElementById('totalItems').textContent = items.reduce((sum, i) => sum + i.qty, 0);
+        document.getElementById('totalValue').textContent = items.reduce((sum, i) => sum + (i.qty * i.price), 0).toFixed(2);
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function exportData() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(items, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `inventory_${new Date().toISOString().slice(0,10)}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const imported = JSON.parse(e.target.result);
+                if (Array.isArray(imported)) {
+                    resetFormState();
+                    items = imported;
+                    saveAndRender();
+                    alert('База успешно загружена!');
+                } else {
+                    alert('Неверный формат файла.');
+                }
+            } catch (err) {
+                alert('Ошибка при чтении файла.');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    render();
+</script>
+
+</body>
+</html>
