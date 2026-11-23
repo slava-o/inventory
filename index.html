@@ -296,7 +296,7 @@
     let currentPhotoBase64 = '';
     let editingId = null;
 
-    const isConfigured = SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.startsWith('ey');
+    const isConfigured = SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.startsWith('sb_publishable');
 
     if (!isConfigured) {
         document.getElementById('configWarning').classList.remove('hidden');
