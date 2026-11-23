@@ -3,57 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Домашний Инвентарь</title>
+    <title>Домашний Инвентарь — Облако</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary: #2563eb;
             --primary-hover: #1d4ed8;
-            --warning: #f59e0b;
-            --warning-hover: #d97706;
             --bg: #f8fafc;
             --card: #ffffff;
             --text: #1e293b;
             --muted: #64748b;
             --border: #e2e8f0;
             --danger: #ef4444;
+            --warning-bg: #fefce8;
+            --warning-border: #facc15;
+            --warning-btn: #ca8a04;
+            --warning-btn-hover: #a16207;
         }
 
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; line-height: 1.5; }
-        .container { max-width: 1100px; margin: 0 auto; }
+        .container { max-width: 1120px; margin: 0 auto; }
 
         header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 24px; }
-        h1 { margin: 0; font-size: 1.75rem; }
+        h1 { margin: 0; font-size: 1.65rem; display: flex; align-items: center; gap: 10px; }
+
+        .user-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .user-pill { display: flex; align-items: center; gap: 8px; background: var(--card); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); font-size: 0.875rem; }
+        .user-pill img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+
+        .auth-wrapper { min-height: 80vh; display: flex; align-items: center; justify-content: center; }
+        .auth-card { background: var(--card); padding: 36px 28px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.06); max-width: 420px; width: 100%; text-align: center; }
+        .auth-card h2 { margin: 0 0 8px; font-size: 1.5rem; }
+        .auth-card p { color: var(--muted); font-size: 0.95rem; margin: 0 0 24px; }
+
+        .google-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 12px 16px; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .google-btn:hover { background: #f1f5f9; border-color: #94a3b8; }
+
+        .config-alert { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 14px; border-radius: 10px; font-size: 0.85rem; text-align: left; margin-bottom: 20px; }
+        .config-alert code { background: #fee2e2; padding: 2px 5px; border-radius: 4px; font-family: monospace; }
 
         .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 24px; }
         .stat-card { background: var(--card); padding: 16px; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
         .stat-card span { color: var(--muted); font-size: 0.875rem; display: block; }
         .stat-card strong { font-size: 1.5rem; color: var(--primary); }
 
-        .card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.04); margin-bottom: 24px; transition: border-color 0.2s; }
-        .card.editing-mode { border: 2px solid var(--warning); background-color: #fffbeb; }
-        
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: center; }
+        .card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.04); margin-bottom: 24px; transition: background-color 0.25s, border-color 0.25s; }
+        .card.edit-mode { background-color: var(--warning-bg); border-color: var(--warning-border); }
+
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: center; }
+        .full-row { grid-column: 1 / -1; }
         input, select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; outline: none; background: #fff; }
         input:focus, select:focus { border-color: var(--primary); }
 
-        .photo-upload-wrap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .file-label { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 12px; background: #f1f5f9; border: 1px dashed #94a3b8; border-radius: 8px; cursor: pointer; font-size: 0.9rem; color: var(--text); width: 100%; text-align: center; transition: 0.2s; }
+        .photo-input-wrap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .file-label { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; background: #f1f5f9; border: 1px dashed #94a3b8; border-radius: 8px; cursor: pointer; font-size: 0.9rem; color: var(--text); transition: 0.2s; }
         .file-label:hover { background: #e2e8f0; }
-        .preview-box { display: none; align-items: center; gap: 8px; margin-top: 6px; font-size: 0.85rem; color: var(--muted); }
-        .preview-box img { width: 42px; height: 42px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+        .preview-box { position: relative; display: inline-block; }
+        .preview-box img { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); display: block; }
+        .remove-preview { position: absolute; -top: 6px; top: -6px; right: -6px; background: var(--danger); color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; line-height: 1; padding: 0; cursor: pointer; }
 
-        .form-actions { display: flex; gap: 8px; }
-        .form-actions button { flex: 1; }
-
+        .form-actions { display: flex; gap: 8px; justify-content: flex-end; }
         button { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; font-weight: 500; transition: 0.2s; }
-        button:hover { background: var(--primary-hover); }
-        button.warning { background: var(--warning); color: #fff; }
-        button.warning:hover { background: var(--warning-hover); }
+        button:hover:not(:disabled) { background: var(--primary-hover); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        button.save-edit { background: var(--warning-btn); }
+        button.save-edit:hover:not(:disabled) { background: var(--warning-btn-hover); }
         button.secondary { background: #e2e8f0; color: var(--text); }
         button.secondary:hover { background: #cbd5e1; }
-        button.icon-btn { background: transparent; padding: 6px 9px; border-radius: 6px; }
-        button.edit-btn { color: var(--primary); }
+        button.icon-btn { background: transparent; padding: 6px 8px; font-size: 1rem; border-radius: 6px; }
+        button.edit-btn { color: #2563eb; }
         button.edit-btn:hover { background: #dbeafe; }
         button.danger { color: var(--danger); }
         button.danger:hover { background: #fee2e2; }
@@ -63,44 +82,82 @@
         .filters select { flex: 1; min-width: 150px; }
 
         table { width: 100%; border-collapse: collapse; text-align: left; }
-        th, td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        th, td { padding: 12px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
         th { color: var(--muted); font-weight: 600; font-size: 0.875rem; }
         tr:hover { background-color: #f1f5f9; }
-        tr.active-edit { background-color: #fef3c7; }
-        
-        .thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); cursor: zoom-in; display: block; transition: transform 0.15s; }
-        .thumb:hover { transform: scale(1.08); }
-        .no-photo { width: 48px; height: 48px; border-radius: 8px; background: #f1f5f9; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 1.1rem; }
+        tr.editing-row { background-color: var(--warning-bg); }
 
+        .thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); cursor: zoom-in; transition: transform 0.15s; display: block; }
+        .thumb:hover { transform: scale(1.08); }
+        .no-photo { width: 48px; height: 48px; border-radius: 8px; background: #f1f5f9; color: #94a3b8; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; border: 1px solid var(--border); }
+
+        .item-note { font-size: 0.82rem; color: var(--muted); margin-top: 3px; max-width: 260px; word-break: break-word; }
         .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 0.8rem; background: #e0e7ff; color: #3730a3; font-weight: 500; }
         .room-badge { background: #dcfce7; color: #166534; }
         .empty-state { text-align: center; padding: 40px; color: var(--muted); }
+        .actions-cell { text-align: right; white-space: nowrap; }
+        .hidden { display: none !important; }
 
-        /* Модальное окно для фото */
         .modal { display: none; position: fixed; z-index: 1000; inset: 0; background: rgba(15, 23, 42, 0.85); align-items: center; justify-content: center; padding: 20px; }
         .modal.open { display: flex; }
-        .modal-content { max-width: 90vw; max-height: 85vh; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
-        .modal-caption { color: #fff; text-align: center; margin-top: 12px; font-size: 1rem; }
-        .modal-close { position: absolute; top: 20px; right: 28px; color: #fff; font-size: 2rem; cursor: pointer; background: none; border: none; padding: 0; line-height: 1; }
+        .modal-content { max-width: 90vw; max-height: 85vh; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .modal-caption { color: white; text-align: center; margin-top: 12px; font-size: 1rem; }
+        .modal-close { position: fixed; top: 20px; right: 28px; color: white; font-size: 32px; font-weight: bold; cursor: pointer; background: none; border: none; padding: 0; }
 
-        @media (max-width: 720px) {
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #1e293b; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 2000; opacity: 0; transition: opacity 0.25s; pointer-events: none; }
+        .toast.show { opacity: 1; }
+
+        @media (max-width: 780px) {
             table, thead, tbody, th, td, tr { display: block; }
             thead { display: none; }
-            tr { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; padding: 12px; }
-            td { border: none; padding: 6px 0; display: flex; justify-content: space-between; align-items: center; }
-            td::before { content: attr(data-label); font-weight: 600; color: var(--muted); }
+            tr { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; padding: 10px; }
+            td { border: none; padding: 6px 0; display: flex; justify-content: space-between; align-items: center; text-align: right; }
+            td::before { content: attr(data-label); font-weight: 600; color: var(--muted); text-align: left; padding-right: 12px; }
+            td.actions-cell { justify-content: flex-end; border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px; }
+            td.actions-cell::before { display: none; }
+            .item-note { max-width: 100%; text-align: right; }
         }
     </style>
 </head>
 <body>
 
-<div class="container">
+<!-- ЭКРАН ВХОДА ЧЕРЕЗ GOOGLE -->
+<div id="authScreen" class="auth-wrapper">
+    <div class="auth-card">
+        <div style="font-size: 2.5rem; margin-bottom: 10px;">📦</div>
+        <h2>Домашний Инвентарь</h2>
+        <p>Войдите через Google, чтобы получить доступ к вашей личной облачной базе вещей и фотографий.</p>
+
+        <div id="configWarning" class="config-alert hidden">
+            <strong>Требуется настройка подключения:</strong><br>
+            Откройте файл <code>index.html</code> в текстовом редакторе и впишите ваши <code>SUPABASE_URL</code> и <code>SUPABASE_ANON_KEY</code> в начале блока <code>&lt;script&gt;</code>.
+        </div>
+
+        <button id="googleLoginBtn" class="google-btn" onclick="signInWithGoogle()">
+            <svg width="20" height="20" viewBox="0 0 48 48">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            Войти через Google
+        </button>
+    </div>
+</div>
+
+<!-- ОСНОВНОЙ ИНТЕРФЕЙС ПРИЛОЖЕНИЯ -->
+<div id="appScreen" class="container hidden">
     <header>
         <h1>📦 Домашний Инвентарь</h1>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button class="secondary" onclick="exportData()">⬇ Скачать базу</button>
-            <button class="secondary" onclick="document.getElementById('importFile').click()">⬆ Загрузить базу</button>
+        <div class="user-bar">
+            <div class="user-pill">
+                <img id="userAvatar" src="" alt="" class="hidden">
+                <span id="userEmail">Пользователь</span>
+            </div>
+            <button class="secondary" onclick="exportData()" title="Скачать резервную копию">⬇ JSON</button>
+            <button class="secondary" onclick="document.getElementById('importFile').click()" title="Импортировать из JSON в облако">⬆ JSON</button>
             <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
+            <button class="secondary" onclick="signOut()">Выйти</button>
         </div>
     </header>
 
@@ -122,9 +179,9 @@
 
     <!-- Форма добавления / редактирования -->
     <div class="card" id="formCard">
-        <h3 id="formTitle" style="margin-top: 0;">Добавить вещь</h3>
+        <h3 style="margin-top: 0;" id="formTitle">Добавить вещь</h3>
         <form id="itemForm" class="form-grid">
-            <input type="text" id="name" placeholder="Название (напр. Шуруповёрт)" required>
+            <input type="text" id="name" placeholder="Название (напр. Шуруповёрт) *" required>
             <select id="room">
                 <option value="Гостиная">Гостиная</option>
                 <option value="Спальня">Спальня</option>
@@ -132,6 +189,7 @@
                 <option value="Прихожая">Прихожая</option>
                 <option value="Балкон / Кладовка">Балкон / Кладовка</option>
                 <option value="Ванная">Ванная</option>
+                <option value="Гараж / Дача">Гараж / Дача</option>
             </select>
             <select id="category">
                 <option value="Электроника">Электроника</option>
@@ -140,25 +198,27 @@
                 <option value="Одежда и обувь">Одежда и обувь</option>
                 <option value="Посуда и быт">Посуда и быт</option>
                 <option value="Документы">Документы</option>
+                <option value="Авто / Мото">Авто / Мото</option>
                 <option value="Другое">Другое</option>
             </select>
             <input type="text" id="spot" placeholder="Точное место (напр. Верхняя полка)">
-            <input type="number" id="qty" placeholder="Кол-во" value="1" min="1" required>
-            <input type="number" id="price" placeholder="Цена за шт. (BYN)" min="0" step="0.01">
-            
-            <div class="photo-upload-wrap">
-                <label class="file-label" for="photoInput">📷 Выбрать фото</label>
+            <input type="number" id="qty" placeholder="Кол-во *" value="1" min="1" required>
+            <input type="number" id="price" placeholder="Цена за шт. (необязательно)" min="0" step="0.01">
+
+            <input type="text" id="note" class="full-row" placeholder="Примечание к вещи (серийный номер, состояние, кому одолжили и т.д.)">
+
+            <div class="photo-input-wrap">
+                <label class="file-label" for="photoInput">📷 <span id="photoLabelText">Фото вещи</span></label>
                 <input type="file" id="photoInput" accept="image/*" style="display: none;" onchange="handlePhotoSelect(event)">
-                <div class="preview-box" id="previewBox">
-                    <img id="previewImg" src="" alt="Превью">
-                    <span id="previewText">Фото готово</span>
-                    <button type="button" class="icon-btn danger" onclick="clearPhoto()" title="Убрать фото">✖</button>
+                <div id="previewContainer" class="preview-box" style="display: none;">
+                    <img id="photoPreview" src="" alt="Превью">
+                    <button type="button" class="remove-preview" onclick="clearPhoto()" title="Убрать фото">×</button>
                 </div>
             </div>
 
             <div class="form-actions">
+                <button type="button" id="cancelEditBtn" class="secondary" style="display: none;" onclick="cancelEdit()">Отмена</button>
                 <button type="submit" id="submitBtn">Добавить</button>
-                <button type="button" class="secondary" id="cancelEditBtn" style="display: none;" onclick="cancelEdit()">Отмена</button>
             </div>
         </form>
     </div>
@@ -166,7 +226,7 @@
     <!-- Поиск и таблица -->
     <div class="card">
         <div class="filters">
-            <input type="text" id="searchInput" placeholder="🔍 Поиск по названию или месту хранения..." oninput="render()">
+            <input type="text" id="searchInput" placeholder="🔍 Поиск по названию, месту или примечанию..." oninput="render()">
             <select id="filterRoom" onchange="render()">
                 <option value="">Все комнаты</option>
                 <option value="Гостиная">Гостиная</option>
@@ -175,6 +235,7 @@
                 <option value="Прихожая">Прихожая</option>
                 <option value="Балкон / Кладовка">Балкон / Кладовка</option>
                 <option value="Ванная">Ванная</option>
+                <option value="Гараж / Дача">Гараж / Дача</option>
             </select>
             <select id="filterCategory" onchange="render()">
                 <option value="">Все категории</option>
@@ -184,6 +245,7 @@
                 <option value="Одежда и обувь">Одежда и обувь</option>
                 <option value="Посуда и быт">Посуда и быт</option>
                 <option value="Документы">Документы</option>
+                <option value="Авто / Мото">Авто / Мото</option>
                 <option value="Другое">Другое</option>
             </select>
         </div>
@@ -192,38 +254,137 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Фото</th>
-                        <th>Название</th>
+                        <th style="width: 68px;">Фото</th>
+                        <th>Название и примечание</th>
                         <th>Комната</th>
                         <th>Категория</th>
                         <th>Место хранения</th>
                         <th>Кол-во</th>
                         <th>Сумма (BYN)</th>
-                        <th>Действия</th>
+                        <th style="width: 90px;"></th>
                     </tr>
                 </thead>
                 <tbody id="inventoryBody"></tbody>
             </table>
-            <div id="emptyState" class="empty-state">Список пока пуст. Добавьте первую вещь выше!</div>
+            <div id="emptyState" class="empty-state">Загрузка данных из облака...</div>
         </div>
     </div>
 </div>
 
 <!-- Модальное окно просмотра фото -->
-<div class="modal" id="photoModal" onclick="closeModal(event)">
-    <button class="modal-close" onclick="closeModal(event, true)">&times;</button>
+<div id="photoModal" class="modal" onclick="closeModal(event)">
+    <button class="modal-close" onclick="closeModal(event)">&times;</button>
     <div>
-        <img class="modal-content" id="modalImg" src="" alt="">
-        <div class="modal-caption" id="modalCaption"></div>
+        <img id="modalImg" class="modal-content" src="" alt="Фото вещи">
+        <div id="modalCaption" class="modal-caption"></div>
     </div>
 </div>
 
+<div id="toast" class="toast"></div>
+
 <script>
-    let items = JSON.parse(localStorage.getItem('homeInventory')) || [];
-    let currentPhotoBase64 = null;
+    // =========================================================================
+    // ВСТАВЬТЕ ВАШИ ДАННЫЕ ИЗ SUPABASE (Project Settings -> Data API / API):
+    // =========================================================================
+    const SUPABASE_URL = 'https://eokiymvzqnhlfycynkwp.supabase.co/rest/v1/';
+    const SUPABASE_ANON_KEY = 'sb_publishable_CH4OKqIXGYiKzJcw2qXasw_1NJDpVnW';
+    // =========================================================================
+
+    let supabaseClient = null;
+    let currentUser = null;
+    let items = [];
+    let currentPhotoBase64 = '';
     let editingId = null;
 
-    // Сжатие фото перед сохранением в localStorage
+    const isConfigured = SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.startsWith('ey');
+
+    if (!isConfigured) {
+        document.getElementById('configWarning').classList.remove('hidden');
+        document.getElementById('googleLoginBtn').disabled = true;
+    } else {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        initAuth();
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // --- АВТОРИЗАЦИЯ ЧЕРЕЗ GOOGLE ---
+    async function initAuth() {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        handleSession(session);
+
+        supabaseClient.auth.onAuthStateChange((_event, session) => {
+            handleSession(session);
+        });
+    }
+
+    function handleSession(session) {
+        if (session && session.user) {
+            currentUser = session.user;
+            document.getElementById('authScreen').classList.add('hidden');
+            document.getElementById('appScreen').classList.remove('hidden');
+
+            const meta = currentUser.user_metadata || {};
+            document.getElementById('userEmail').textContent = meta.full_name || currentUser.email || 'Аккаунт Google';
+            if (meta.avatar_url) {
+                const avatar = document.getElementById('userAvatar');
+                avatar.src = meta.avatar_url;
+                avatar.classList.remove('hidden');
+            }
+            loadItemsFromCloud();
+        } else {
+            currentUser = null;
+            items = [];
+            document.getElementById('appScreen').classList.add('hidden');
+            document.getElementById('authScreen').classList.remove('hidden');
+        }
+    }
+
+    async function signInWithGoogle() {
+        if (!supabaseClient) return;
+        const redirectTo = window.location.origin + window.location.pathname;
+        const { error } = await supabaseClient.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo }
+        });
+        if (error) {
+            alert('Ошибка входа через Google: ' + error.message);
+        }
+    }
+
+    async function signOut() {
+        if (!supabaseClient) return;
+        await supabaseClient.auth.signOut();
+    }
+
+    // --- ЗАГРУЗКА ИЗ SUPABASE ---
+    async function loadItemsFromCloud() {
+        const emptyState = document.getElementById('emptyState');
+        emptyState.textContent = 'Загрузка данных из облака...';
+        emptyState.style.display = 'block';
+
+        const { data, error } = await supabaseClient
+            .from('items')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error(error);
+            emptyState.textContent = 'Ошибка загрузки базы: ' + error.message;
+            return;
+        }
+
+        items = data || [];
+        render();
+    }
+
+    // --- РАБОТА С ФОТО ---
     function handlePhotoSelect(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -233,15 +394,15 @@
             const img = new Image();
             img.onload = function() {
                 const canvas = document.createElement('canvas');
-                const MAX_SIZE = 800;
+                const MAX_SIZE = 700;
                 let width = img.width;
                 let height = img.height;
 
                 if (width > height && width > MAX_SIZE) {
-                    height *= MAX_SIZE / width;
+                    height = Math.round((height * MAX_SIZE) / width);
                     width = MAX_SIZE;
                 } else if (height > MAX_SIZE) {
-                    width *= MAX_SIZE / height;
+                    width = Math.round((width * MAX_SIZE) / height);
                     height = MAX_SIZE;
                 }
 
@@ -250,57 +411,98 @@
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
 
-                currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.75);
-                showPhotoPreview(currentPhotoBase64, 'Фото готово');
+                currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.72);
+                showPreview(currentPhotoBase64);
             };
             img.src = e.target.result;
         };
         reader.readAsDataURL(file);
     }
 
-    function showPhotoPreview(src, labelText) {
-        document.getElementById('previewImg').src = src;
-        document.getElementById('previewText').textContent = labelText;
-        document.getElementById('previewBox').style.display = 'flex';
+    function showPreview(src) {
+        if (!src) {
+            clearPhoto();
+            return;
+        }
+        document.getElementById('photoPreview').src = src;
+        document.getElementById('previewContainer').style.display = 'inline-block';
+        document.getElementById('photoLabelText').textContent = 'Заменить фото';
     }
 
     function clearPhoto() {
-        currentPhotoBase64 = null;
+        currentPhotoBase64 = '';
         document.getElementById('photoInput').value = '';
-        document.getElementById('previewBox').style.display = 'none';
-        document.getElementById('previewImg').src = '';
+        document.getElementById('previewContainer').style.display = 'none';
+        document.getElementById('photoPreview').src = '';
+        document.getElementById('photoLabelText').textContent = 'Фото вещи';
     }
 
+    // --- ДОБАВЛЕНИЕ И РЕДАКТИРОВАНИЕ ---
     const form = document.getElementById('itemForm');
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const itemData = {
+        if (!supabaseClient || !currentUser) return;
+
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        const origBtnText = submitBtn.textContent;
+        submitBtn.textContent = 'Сохранение...';
+
+        const priceRaw = document.getElementById('price').value.trim();
+        const parsedPrice = priceRaw === '' ? null : parseFloat(priceRaw);
+
+        const payload = {
             name: document.getElementById('name').value.trim(),
             room: document.getElementById('room').value,
             category: document.getElementById('category').value,
             spot: document.getElementById('spot').value.trim() || '—',
             qty: parseInt(document.getElementById('qty').value) || 1,
-            price: parseFloat(document.getElementById('price').value) || 0,
-            photo: currentPhotoBase64
+            price: isNaN(parsedPrice) ? null : parsedPrice,
+            note: document.getElementById('note').value.trim() || null,
+            photo: currentPhotoBase64 || null
         };
 
-        if (editingId !== null) {
-            const index = items.findIndex(i => i.id === editingId);
-            if (index !== -1) {
-                items[index] = { ...items[index], ...itemData };
-            }
-            resetFormState();
-        } else {
-            items.unshift({
-                id: Date.now(),
-                ...itemData
-            });
-            form.reset();
-            document.getElementById('qty').value = 1;
-            clearPhoto();
-        }
+        try {
+            if (editingId !== null) {
+                const { data, error } = await supabaseClient
+                    .from('items')
+                    .update(payload)
+                    .eq('id', editingId)
+                    .select()
+                    .single();
 
-        saveAndRender();
+                if (error) throw error;
+                const idx = items.findIndex(i => i.id === editingId);
+                if (idx !== -1) items[idx] = data;
+                showToast('Изменения сохранены в облаке');
+                cancelEdit();
+            } else {
+                const newRecord = {
+                    id: Date.now(),
+                    user_id: currentUser.id,
+                    ...payload
+                };
+                const { data, error } = await supabaseClient
+                    .from('items')
+                    .insert(newRecord)
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                items.unshift(data);
+                form.reset();
+                document.getElementById('qty').value = 1;
+                clearPhoto();
+                showToast('Вещь добавлена в облако');
+            }
+            render();
+        } catch (err) {
+            alert('Ошибка сохранения в Supabase: ' + err.message);
+        } finally {
+            submitBtn.disabled = false;
+            if (editingId === null) submitBtn.textContent = 'Добавить';
+            else submitBtn.textContent = origBtnText;
+        }
     });
 
     function startEdit(id) {
@@ -309,88 +511,75 @@
 
         editingId = id;
         document.getElementById('name').value = item.name;
-        document.getElementById('room').value = item.room;
-        document.getElementById('category').value = item.category;
-        document.getElementById('spot').value = item.spot === '—' ? '' : item.spot;
-        document.getElementById('qty').value = item.qty;
-        document.getElementById('price').value = item.price || '';
+        document.getElementById('room').value = item.room || 'Гостиная';
+        document.getElementById('category').value = item.category || 'Другое';
+        document.getElementById('spot').value = item.spot === '—' ? '' : (item.spot || '');
+        document.getElementById('qty').value = item.qty || 1;
+        document.getElementById('price').value = (item.price !== null && item.price !== undefined) ? item.price : '';
+        document.getElementById('note').value = item.note || '';
 
-        if (item.photo) {
-            currentPhotoBase64 = item.photo;
-            showPhotoPreview(item.photo, 'Текущее фото');
-        } else {
-            clearPhoto();
-        }
+        currentPhotoBase64 = item.photo || '';
+        showPreview(currentPhotoBase64);
 
-        // Визуальное переключение формы в режим редактирования
-        document.getElementById('formCard').classList.add('editing-mode');
-        document.getElementById('formTitle').textContent = '✏️ Редактирование: ' + item.name;
+        const formCard = document.getElementById('formCard');
+        formCard.classList.add('edit-mode');
+        document.getElementById('formTitle').textContent = '✏️ Редактирование вещи';
+
         const submitBtn = document.getElementById('submitBtn');
         submitBtn.textContent = 'Сохранить';
-        submitBtn.classList.add('warning');
+        submitBtn.classList.add('save-edit');
         document.getElementById('cancelEditBtn').style.display = 'inline-block';
 
-        document.getElementById('formCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        formCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
         render();
     }
 
     function cancelEdit() {
-        resetFormState();
-        render();
-    }
-
-    function resetFormState() {
         editingId = null;
         form.reset();
         document.getElementById('qty').value = 1;
         clearPhoto();
 
-        document.getElementById('formCard').classList.remove('editing-mode');
+        document.getElementById('formCard').classList.remove('edit-mode');
         document.getElementById('formTitle').textContent = 'Добавить вещь';
+
         const submitBtn = document.getElementById('submitBtn');
         submitBtn.textContent = 'Добавить';
-        submitBtn.classList.remove('warning');
+        submitBtn.classList.remove('save-edit');
         document.getElementById('cancelEditBtn').style.display = 'none';
-    }
-
-    function deleteItem(id) {
-        if (confirm('Удалить эту вещь из списка?')) {
-            if (editingId === id) {
-                resetFormState();
-            }
-            items = items.filter(item => item.id !== id);
-            saveAndRender();
-        }
-    }
-
-    function saveAndRender() {
-        try {
-            localStorage.setItem('homeInventory', JSON.stringify(items));
-        } catch (e) {
-            alert('Память браузера заполнена! Скачайте базу через кнопку "Скачать базу" и удалите лишние фото.');
-        }
         render();
     }
 
-    function openModal(photoSrc, captionText) {
-        document.getElementById('modalImg').src = photoSrc;
-        document.getElementById('modalCaption').textContent = captionText;
-        document.getElementById('photoModal').classList.add('open');
-    }
+    async function deleteItem(id) {
+        if (!confirm('Удалить эту вещь из облачной базы?')) return;
 
-    function closeModal(event, force = false) {
-        if (force || event.target.id === 'photoModal') {
-            document.getElementById('photoModal').classList.remove('open');
+        const { error } = await supabaseClient
+            .from('items')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            alert('Ошибка при удалении: ' + error.message);
+            return;
         }
+
+        if (editingId === id) cancelEdit();
+        items = items.filter(item => item.id !== id);
+        showToast('Запись удалена');
+        render();
     }
 
+    // --- ОТРИСОВКА ТАБЛИЦЫ ---
     function render() {
         const search = document.getElementById('searchInput').value.toLowerCase();
         const roomFilter = document.getElementById('filterRoom').value;
         const catFilter = document.getElementById('filterCategory').value;
 
         const filtered = items.filter(item => {
-            const matchesSearch = item.name.toLowerCase().includes(search) || item.spot.toLowerCase().includes(search);
+            const nameMatch = (item.name || '').toLowerCase().includes(search);
+            const spotMatch = (item.spot || '').toLowerCase().includes(search);
+            const noteMatch = (item.note || '').toLowerCase().includes(search);
+            const matchesSearch = nameMatch || spotMatch || noteMatch;
             const matchesRoom = !roomFilter || item.room === roomFilter;
             const matchesCat = !catFilter || item.category === catFilter;
             return matchesSearch && matchesRoom && matchesCat;
@@ -401,29 +590,39 @@
         tbody.innerHTML = '';
 
         if (filtered.length === 0) {
+            emptyState.textContent = items.length === 0
+                ? 'Список пока пуст. Добавьте первую вещь выше!'
+                : 'По вашему запросу ничего не найдено.';
             emptyState.style.display = 'block';
         } else {
             emptyState.style.display = 'none';
             filtered.forEach(item => {
-                const total = (item.qty * item.price).toFixed(2);
+                const hasPrice = item.price !== null && item.price !== undefined && item.price !== '';
+                const totalText = hasPrice ? `${(item.qty * Number(item.price)).toFixed(2)} BYN` : '—';
+
                 const tr = document.createElement('tr');
-                if (item.id === editingId) {
-                    tr.classList.add('active-edit');
-                }
-                
-                const photoCell = item.photo 
-                    ? `<img src="${item.photo}" class="thumb" alt="Фото" onclick="openModal('${item.photo}', '${escapeHtml(item.name)}')">`
+                if (item.id === editingId) tr.classList.add('editing-row');
+
+                const photoHtml = item.photo
+                    ? `<img src="${item.photo}" class="thumb" alt="Фото" onclick="openModal(${item.id})">`
                     : `<div class="no-photo" title="Нет фото">📷</div>`;
 
+                const noteHtml = item.note
+                    ? `<div class="item-note">📝 ${escapeHtml(item.note)}</div>`
+                    : '';
+
                 tr.innerHTML = `
-                    <td data-label="Фото">${photoCell}</td>
-                    <td data-label="Название"><strong>${escapeHtml(item.name)}</strong></td>
-                    <td data-label="Комната"><span class="badge room-badge">${escapeHtml(item.room)}</span></td>
-                    <td data-label="Категория"><span class="badge">${escapeHtml(item.category)}</span></td>
-                    <td data-label="Место">${escapeHtml(item.spot)}</td>
+                    <td data-label="Фото">${photoHtml}</td>
+                    <td data-label="Название">
+                        <strong>${escapeHtml(item.name)}</strong>
+                        ${noteHtml}
+                    </td>
+                    <td data-label="Комната"><span class="badge room-badge">${escapeHtml(item.room || '—')}</span></td>
+                    <td data-label="Категория"><span class="badge">${escapeHtml(item.category || '—')}</span></td>
+                    <td data-label="Место">${escapeHtml(item.spot || '—')}</td>
                     <td data-label="Кол-во">${item.qty} шт.</td>
-                    <td data-label="Сумма">${total} BYN</td>
-                    <td data-label="Действия" style="text-align: right; white-space: nowrap;">
+                    <td data-label="Сумма">${totalText}</td>
+                    <td class="actions-cell">
                         <button class="icon-btn edit-btn" onclick="startEdit(${item.id})" title="Редактировать">✏️</button>
                         <button class="icon-btn danger" onclick="deleteItem(${item.id})" title="Удалить">✖</button>
                     </td>
@@ -432,11 +631,35 @@
             });
         }
 
-        // Обновление статистики
         document.getElementById('totalPositions').textContent = items.length;
-        document.getElementById('totalItems').textContent = items.reduce((sum, i) => sum + i.qty, 0);
-        document.getElementById('totalValue').textContent = items.reduce((sum, i) => sum + (i.qty * i.price), 0).toFixed(2);
+        document.getElementById('totalItems').textContent = items.reduce((sum, i) => sum + (Number(i.qty) || 0), 0);
+        const totalSum = items.reduce((sum, i) => {
+            if (i.price === null || i.price === undefined || i.price === '') return sum;
+            return sum + ((Number(i.qty) || 0) * Number(i.price));
+        }, 0);
+        document.getElementById('totalValue').textContent = totalSum.toFixed(2);
     }
+
+    function openModal(id) {
+        const item = items.find(i => i.id === id);
+        if (!item || !item.photo) return;
+        document.getElementById('modalImg').src = item.photo;
+        document.getElementById('modalCaption').textContent = `${item.name} (${item.room} — ${item.spot})`;
+        document.getElementById('photoModal').classList.add('open');
+    }
+
+    function closeModal(event) {
+        if (event.target.id === 'photoModal' || event.target.classList.contains('modal-close')) {
+            document.getElementById('photoModal').classList.remove('open');
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.getElementById('photoModal').classList.remove('open');
+            if (editingId !== null) cancelEdit();
+        }
+    });
 
     function escapeHtml(text) {
         const div = document.createElement('div');
@@ -444,39 +667,59 @@
         return div.innerHTML;
     }
 
+    // --- ЭКСПОРТ И ИМПОРТ JSON ---
     function exportData() {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(items, null, 2));
         const downloadAnchor = document.createElement('a');
         downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `inventory_${new Date().toISOString().slice(0,10)}.json`);
+        downloadAnchor.setAttribute("download", `inventory_cloud_${new Date().toISOString().slice(0,10)}.json`);
         document.body.appendChild(downloadAnchor);
         downloadAnchor.click();
         downloadAnchor.remove();
     }
 
-    function importData(event) {
+    async function importData(event) {
         const file = event.target.files[0];
-        if (!file) return;
+        if (!file || !supabaseClient || !currentUser) return;
+
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = async function(e) {
             try {
                 const imported = JSON.parse(e.target.result);
-                if (Array.isArray(imported)) {
-                    resetFormState();
-                    items = imported;
-                    saveAndRender();
-                    alert('База успешно загружена!');
-                } else {
+                if (!Array.isArray(imported)) {
                     alert('Неверный формат файла.');
+                    return;
                 }
+                if (!confirm(`Загрузить ${imported.length} позиций в вашу облачную базу?`)) return;
+
+                const rows = imported.map((item, idx) => ({
+                    id: item.id || (Date.now() + idx),
+                    user_id: currentUser.id,
+                    name: item.name || 'Без названия',
+                    room: item.room || 'Гостиная',
+                    category: item.category || 'Другое',
+                    spot: item.spot || '—',
+                    qty: Number(item.qty) || 1,
+                    price: (item.price !== null && item.price !== undefined && item.price !== '' && Number(item.price) !== 0)
+                        ? Number(item.price)
+                        : null,
+                    note: item.note || null,
+                    photo: item.photo || null
+                }));
+
+                const { error } = await supabaseClient.from('items').upsert(rows);
+                if (error) throw error;
+
+                await loadItemsFromCloud();
+                showToast('База успешно импортирована в облако!');
             } catch (err) {
-                alert('Ошибка при чтении файла.');
+                alert('Ошибка при импорте: ' + err.message);
+            } finally {
+                event.target.value = '';
             }
         };
         reader.readAsText(file);
     }
-
-    render();
 </script>
 
 </body>
